@@ -1,101 +1,131 @@
 # Working with the Polling API in R
 
-This guide shows you how to use the Zweitstimme Polling API with R and the `httr2` package. We'll cover practical examples for academic research.
+A comprehensive guide to accessing German polling data using R, progressing from simple requests to advanced analysis.
 
 ## Prerequisites
 
-You'll need these R packages:
-
 ```r
-install.packages(c("httr2", "dplyr", "purrr", "ggplot2", "lubridate", "tidyr"))
-```
+install.packages(c("httr2", "dplyr", "ggplot2", "lubridate", "purrr"))
 
-Load them:
-
-```r
 library(httr2)
 library(dplyr)
-library(purrr)
 library(ggplot2)
 library(lubridate)
-library(tidyr)
+library(purrr)
 ```
 
-## Basic API Calls
+---
 
-### Your First Request
+## Level 1: Simple Requests
 
-Let's start with a simple request to get recent federal polls:
+### Your First API Call
+
+The simplest possible request - just fetch data and check if it worked:
 
 ```r
-# Create the request
+# Make a basic request
+response <- request("https://api.fasttrack29.com/v1/polls") |>
+  req_url_query(limit = 5) |>
+  req_perform()
+
+# Check if successful
+resp_status(response)
+# Should return: 200
+
+# Get the data as JSON
+polls <- resp_body_json(response)
+
+# See what we received
+names(polls)
+# [1] "items" "meta"
+
+# How many polls?
+length(polls$items)
+```
+
+### Fetching Specific Data
+
+Get federal polls with a simple filter:
+
+```r
+# Request federal polls
 response <- request("https://api.fasttrack29.com/v1/polls") |>
   req_url_query(
     scope = "federal",
-    limit = 5
+    limit = 10
   ) |>
   req_perform()
 
-# Check status
-resp_status(response)  # Should be 200
+polls <- resp_body_json(response)
 
-# Parse JSON response
-polls_data <- resp_body_json(response)
-
-# See what we got
-names(polls_data)
-# [1] "items" "meta"
-
-# Number of polls returned
-length(polls_data$items)
+# Look at the first poll
+first_poll <- polls$items[[1]]
+first_poll$institute_name
+first_poll$publish_date
 ```
 
-### Understanding the Response
+### Getting Reference Data
 
-The response has two parts:
-
-1. **`items`**: The actual poll data (array of polls)
-2. **`meta`**: Pagination info (total, limit, offset)
+Reference tables are simple lookups:
 
 ```r
-# Look at first poll structure
-str(polls_data$items[[1]])
+# Get list of parties
+parties <- request("https://api.fasttrack29.com/v1/reference/parties") |>
+  req_perform() |>
+  resp_body_json()
 
-# Pagination info
-polls_data$meta
+# View as a simple list
+for (party in parties) {
+  cat(party$short_name, "=", party$id, "\n")
+}
 ```
 
-### Extracting Data into a Data Frame
+---
 
-Convert the nested JSON into a tidy data frame:
+## Level 2: Working with Data
+
+### Converting to Data Frames
+
+API data comes as nested lists. Let's convert it to a tidy data frame:
 
 ```r
-# Extract poll metadata
-polls_df <- map_dfr(polls_data$items, function(poll) {
+# Fetch polls
+response <- request("https://api.fasttrack29.com/v1/polls") |>
+  req_url_query(
+    scope = "federal",
+    limit = 20,
+    include_results = TRUE
+  ) |>
+  req_perform()
+
+polls <- resp_body_json(response)
+
+# Method 1: Simple extraction using purrr
+polls_df <- map_dfr(polls$items, function(poll) {
   tibble(
     id = poll$id,
-    publish_date = as.Date(poll$publish_date),
+    date = as.Date(poll$publish_date),
     institute = poll$institute_name,
-    respondents = poll$respondents,
-    scope = poll$scope
+    respondents = poll$respondents
   )
 })
 
-print(polls_df)
+# View the result
+head(polls_df)
 ```
 
-### Working with Results
+### Extracting Party Results
 
-Polls include party results. Let's extract them:
+Polls contain nested results. Here's how to flatten them:
 
 ```r
-# Get results from all polls
-all_results <- map_dfr(polls_data$items, function(poll) {
-  # For each poll, extract all party results
+# Extract all party results from all polls
+results_df <- map_dfr(polls$items, function(poll) {
+  # For each poll, extract each party result
   map_dfr(poll$results, function(result) {
     tibble(
       poll_id = poll$id,
-      publish_date = as.Date(poll$publish_date),
+      date = as.Date(poll$publish_date),
       institute = poll$institute_name,
       party = result$party_short_name,
       percentage = result$percentage
@@ -103,616 +133,361 @@ all_results <- map_dfr(polls_data$items, function(poll) {
   })
 })
 
-print(all_results)
+# View results
+head(results_df)
+
+# Simple summary
+results_df |>
+  group_by(party) |>
+  summarise(
+    avg = mean(percentage),
+    n = n()
+  )
 ```
 
-## Filtering Data
+### Filtering by Date
 
-### By Date Range
-
-Get polls from a specific time period:
+Get recent polls using date parameters:
 
 ```r
-# Get polls from last 30 days
+# Calculate date 30 days ago
 start_date <- Sys.Date() - 30
 
-recent_polls <- request("https://api.fasttrack29.com/v1/polls") |>
+# Fetch recent polls
+response <- request("https://api.fasttrack29.com/v1/polls") |>
   req_url_query(
     scope = "federal",
     date_from = as.character(start_date),
-    limit = 100
+    limit = 50
   ) |>
-  req_perform() |>
-  resp_body_json()
+  req_perform()
 
-# Extract to data frame
+recent_polls <- resp_body_json(response)
+
+# Convert to data frame
 recent_df <- map_dfr(recent_polls$items, function(poll) {
   map_dfr(poll$results, function(result) {
     tibble(
-      publish_date = as.Date(poll$publish_date),
-      institute = poll$institute_name,
-      party = result$party_short_name,
-      percentage = result$percentage
-    )
-  })
-})
-```
-
-### By Institute
-
-First, find the institute ID:
-
-```r
-# Get institutes
-institutes <- request("https://api.fasttrack29.com/v1/reference/institutes") |>
-  req_perform() |>
-  resp_body_json()
-
-# Find Forsa
-forsa <- institutes |>
-  bind_rows() |>
-  filter(name == "Forsa")
-
-forsa_id <- forsa$id
-
-# Get Forsa polls
-forsa_polls <- request("https://api.fasttrack29.com/v1/polls") |>
-  req_url_query(
-    institute_id = forsa_id,
-    scope = "federal",
-    limit = 100
-  ) |>
-  req_perform() |>
-  resp_body_json()
-```
-
-### By Party
-
-Use the `/v1/results` endpoint to filter by party:
-
-```r
-# Get CDU/CSU results (party_id = 1)
-cdu_results <- request("https://api.fasttrack29.com/v1/results") |>
-  req_url_query(
-    scope = "federal",
-    party_id = 1,
-    date_from = "2024-01-01",
-    limit = 100
-  ) |>
-  req_perform() |>
-  resp_body_json()
-
-# Extract to data frame
-cdu_df <- map_dfr(cdu_results$items, function(item) {
-  result <- item$results[[1]]  # First (and only) result
-  tibble(
-    date = as.Date(item$publish_date),
-    party = result$party_short_name,
-    percentage = result$percentage
-  )
-})
-```
-
-## Visualization Examples
-
-### Time Series Plot
-
-Plot party support over time:
-
-```r
-# Get data for major parties
-major_parties <- c(1, 2, 3, 5)  # CDU/CSU, SPD, Grüne, AfD
-
-all_data <- map_dfr(major_parties, function(party_id) {
-  response <- request("https://api.fasttrack29.com/v1/results") |>
-    req_url_query(
-      scope = "federal",
-      party_id = party_id,
-      date_from = "2024-01-01",
-      limit = 100
-    ) |>
-    req_perform() |>
-    resp_body_json()
-  
-  map_dfr(response$items, function(item) {
-    result <- item$results[[1]]
-    tibble(
-      date = as.Date(item$publish_date),
-      party = result$party_short_name,
-      percentage = result$percentage
-    )
-  })
-})
-
-# Plot
-ggplot(all_data, aes(x = date, y = percentage, color = party)) +
-  geom_line(alpha = 0.3) +
-  geom_smooth(method = "loess", se = FALSE) +
-  labs(
-    title = "Party Support Trends in 2024",
-    x = "Date",
-    y = "Support (%)",
-    color = "Party"
-  ) +
-  theme_minimal() +
-  scale_y_continuous(limits = c(0, NA))
-```
-
-### Comparing Institutes
-
-Compare how different pollsters rate a party:
-
-```r
-# Get all polls for CDU/CSU in 2024
-cdu_data <- request("https://api.fasttrack29.com/v1/polls") |>
-  req_url_query(
-    scope = "federal",
-    date_from = "2024-01-01",
-    limit = 200
-  ) |>
-  req_perform() |>
-  resp_body_json()
-
-# Extract CDU/CSU results by institute
-cdu_by_institute <- map_dfr(cdu_data$items, function(poll) {
-  # Find CDU/CSU result in this poll
-  cdu_result <- poll$results |>
-    keep(~ .$party_id == 1) |>
-    first()
-  
-  if (!is.null(cdu_result)) {
-    tibble(
       date = as.Date(poll$publish_date),
-      institute = poll$institute_name,
-      percentage = cdu_result$percentage
+      party = result$party_short_name,
+      percentage = result$percentage
     )
-  }
+  })
 })
+```
 
-# Box plot by institute
-ggplot(cdu_by_institute, aes(x = reorder(institute, percentage, median), 
-                              y = percentage)) +
-  geom_boxplot() +
+---
+
+## Level 3: Analysis and Visualization
+
+### Basic Plot: Latest Poll Results
+
+Visualize the most recent poll:
+
+```r
+# Get latest poll data
+latest_poll <- results_df |>
+  filter(date == max(date))
+
+# Simple bar chart
+ggplot(latest_poll, aes(x = reorder(party, percentage), y = percentage)) +
+  geom_col(fill = "steelblue") +
   coord_flip() +
   labs(
-    title = "CDU/CSU Support by Polling Institute (2024)",
-    x = "Institute",
+    title = "Latest Federal Poll",
+    subtitle = paste("Published:", max(latest_poll$date)),
+    x = "Party",
     y = "Support (%)"
   ) +
   theme_minimal()
 ```
 
-### Heatmap of Party Support
+### Time Series: Track Party Over Time
+
+Plot how one party's support has changed:
 
 ```r
-# Get recent data
-polls <- request("https://api.fasttrack29.com/v1/polls") |>
-  req_url_query(
-    scope = "federal",
-    date_from = "2024-01-01",
-    limit = 100
-  ) |>
-  req_perform() |>
-  resp_body_json()
+# Filter for one party
+cdu_data <- results_df |>
+  filter(party == "CDU/CSU") |>
+  arrange(date)
 
-# Create matrix
-heatmap_data <- map_dfr(polls$items, function(poll) {
-  map_dfr(poll$results, function(result) {
-    tibble(
-      month = floor_date(as.Date(poll$publish_date), "month"),
-      party = result$party_short_name,
-      percentage = result$percentage
-    )
-  })
-}) |>
-  group_by(month, party) |>
-  summarise(avg = mean(percentage), .groups = 'drop') |>
-  pivot_wider(names_from = party, values_from = avg)
-
-# Plot heatmap
-heatmap_data |>
-  pivot_longer(-month, names_to = "party", values_to = "percentage") |>
-  ggplot(aes(x = month, y = party, fill = percentage)) +
-  geom_tile() +
-  scale_fill_gradient(low = "white", high = "steelblue") +
+# Line plot with trend
+ggplot(cdu_data, aes(x = date, y = percentage)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "loess", se = TRUE) +
   labs(
-    title = "Average Party Support by Month",
-    x = "Month",
-    y = "Party",
-    fill = "Support (%)"
+    title = "CDU/CSU Support Over Time",
+    x = "Date",
+    y = "Support (%)"
   ) +
   theme_minimal()
 ```
 
-## Working with Reference Data
+### Multi-Party Comparison
 
-### Get Party Colors
+Compare multiple parties on the same plot:
 
 ```r
-# Get parties reference
-parties <- request("https://api.fasttrack29.com/v1/reference/parties") |>
-  req_perform() |>
-  resp_body_json() |>
-  bind_rows()
+# Get major parties
+major_parties <- c("CDU/CSU", "SPD", "Grüne", "AfD")
 
-# Create color palette
-party_colors <- parties |>
-  select(short_name, color) |>
-  deframe()
+plot_data <- results_df |>
+  filter(party %in% major_parties)
 
-# Use in plots
-ggplot(data, aes(x = date, y = percentage, color = party)) +
-  geom_line() +
-  scale_color_manual(values = party_colors)
+# Faceted plot
+ggplot(plot_data, aes(x = date, y = percentage)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(method = "loess", se = FALSE) +
+  facet_wrap(~party) +
+  labs(
+    title = "Party Support Trends",
+    x = "Date",
+    y = "Support (%)"
+  ) +
+  theme_minimal()
 ```
 
-### Create Lookup Functions
+### Advanced: Rolling Averages
+
+Smooth out polling noise with moving averages:
 
 ```r
-# Cache reference data
-ref <- request("https://api.fasttrack29.com/v1/reference/all") |>
-  req_perform() |>
-  resp_body_json()
+library(zoo)
 
-# Helper functions
-get_party_name <- function(id) {
-  ref$parties |>
-    bind_rows() |>
-    filter(id == !!id) |>
-    pull(short_name)
-}
+# Calculate 7-poll rolling average
+rolling_data <- results_df |>
+  filter(party %in% major_parties) |>
+  group_by(party) |>
+  arrange(date) |>
+  mutate(
+    rolling_avg = rollmean(percentage, k = 7, fill = NA, align = "right")
+  ) |>
+  ungroup()
 
-get_institute_name <- function(id) {
-  ref$institutes |>
-    bind_rows() |>
-    filter(id == !!id) |>
-    pull(name)
-}
-
-# Use them
-get_party_name(1)  # "CDU/CSU"
-get_institute_name(1)  # "Forsa"
+# Plot with rolling average
+ggplot(rolling_data, aes(x = date, color = party)) +
+  geom_point(aes(y = percentage), alpha = 0.2) +
+  geom_line(aes(y = rolling_avg), size = 1) +
+  labs(
+    title = "Party Support with 7-Poll Rolling Average",
+    x = "Date",
+    y = "Support (%)",
+    color = "Party"
+  ) +
+  theme_minimal()
 ```
 
-## Advanced Techniques
+---
 
-### Paginating Through Large Datasets
+## Helper Functions
 
-```r
-get_all_polls <- function(filters = list()) {
-  all_items <- list()
-  offset <- 0
-  limit <- 500
-  
-  repeat {
-    # Build request with filters
-    req <- request("https://api.fasttrack29.com/v1/polls")
-    
-    # Add filter parameters
-    for (name in names(filters)) {
-      req <- req |> req_url_query(!!name := filters[[name]])
-    }
-    
-    # Add pagination
-    req <- req |> req_url_query(limit = limit, offset = offset)
-    
-    # Perform request
-    response <- req |>
-      req_perform() |>
-      resp_body_json()
-    
-    all_items <- c(all_items, response$items)
-    
-    # Check if done
-    if (length(response$items) < limit) break
-    
-    offset <- offset + limit
-    message("Fetched ", offset, " polls...")
-    
-    # Be nice to the API
-    Sys.sleep(0.1)
-  }
-  
-  return(all_items)
-}
+### Safe Request Function
 
-# Get all 2024 federal polls
-all_2024_polls <- get_all_polls(list(
-  scope = "federal",
-  date_from = "2024-01-01"
-))
-```
-
-### Error Handling
+Handle errors gracefully:
 
 ```r
-safe_api_call <- function(url, ...) {
+safe_request <- function(url, ...) {
   tryCatch({
     response <- request(url) |>
       req_url_query(...) |>
       req_perform()
     
     if (resp_status(response) == 200) {
-      return(resp_body_json(response))
+      resp_body_json(response)
     } else {
-      warning("API returned status: ", resp_status(response))
-      return(NULL)
+      warning(paste("Status:", resp_status(response)))
+      NULL
     }
   }, error = function(e) {
-    warning("API call failed: ", e$message)
-    return(NULL)
+    message(paste("Error:", e$message))
+    NULL
   })
 }
 
-# Use safe call
-data <- safe_api_call(
+# Usage
+data <- safe_request(
   "https://api.fasttrack29.com/v1/polls",
   scope = "federal",
   limit = 10
 )
 ```
 
-### Caching Results
+### Complete Workflow Function
+
+Fetch and transform in one step:
 
 ```r
-library(memoise)
-
-# Create cached version of API call
-get_polls_cached <- memoise(function(...) {
-  request("https://api.fasttrack29.com/v1/polls") |>
-    req_url_query(...) |>
-    req_perform() |>
-    resp_body_json()
-}, cache = cache_filesystem(".api_cache"))
-
-# First call hits the API
-data1 <- get_polls_cached(scope = "federal", limit = 10)
-
-# Second call uses cache (instant!)
-data2 <- get_polls_cached(scope = "federal", limit = 10)
-```
-
-## Complete Workflow Example
-
-Here's a complete workflow for analyzing party trends:
-
-```r
-library(httr2)
-library(dplyr)
-library(purrr)
-library(ggplot2)
-library(lubridate)
-
-# Step 1: Get reference data
-parties <- request("https://api.fasttrack29.com/v1/reference/parties") |>
-  req_perform() |>
-  resp_body_json() |>
-  bind_rows()
-
-# Step 2: Get polls for analysis period
-polls <- request("https://api.fasttrack29.com/v1/polls") |>
-  req_url_query(
-    scope = "federal",
-    date_from = "2024-01-01",
-    limit = 200
-  ) |>
-  req_perform() |>
-  resp_body_json()
-
-# Step 3: Transform to tidy format
-tidy_polls <- map_dfr(polls$items, function(poll) {
-  map_dfr(poll$results, function(result) {
-    tibble(
-      date = as.Date(poll$publish_date),
-      institute = poll$institute_name,
-      party_id = result$party_id,
-      party = result$party_short_name,
-      percentage = result$percentage
-    )
-  })
-})
-
-# Step 4: Calculate rolling averages
-analysis <- tidy_polls |>
-  group_by(party) |>
-  arrange(date) |>
-  mutate(
-    rolling_avg = zoo::rollmean(percentage, k = 5, fill = NA, align = "right")
-  ) |>
-  ungroup()
-
-# Step 5: Visualize
-ggplot(analysis, aes(x = date)) +
-  geom_point(aes(y = percentage, color = party), alpha = 0.3, size = 1) +
-  geom_line(aes(y = rolling_avg, color = party), size = 1) +
-  facet_wrap(~party, ncol = 2) +
-  labs(
-    title = "German Party Support Trends in 2024",
-    subtitle = "Individual polls (points) and 5-poll rolling average (line)",
-    x = "Date",
-    y = "Support (%)",
-    color = "Party"
-  ) +
-  theme_minimal() +
-  theme(legend.position = "none")
-
-# Step 6: Summary statistics
-summary_stats <- tidy_polls |>
-  group_by(party) |>
-  summarise(
-    n_polls = n(),
-    mean = mean(percentage),
-    median = median(percentage),
-    sd = sd(percentage),
-    min = min(percentage),
-    max = max(percentage),
-    .groups = 'drop'
-  ) |>
-  arrange(desc(mean))
-
-print(summary_stats)
-```
-
-## Helper Functions
-
-### Safe API Requests
-
-Handle errors gracefully:
-
-```r
-safe_api_request <- function(req) {
-  tryCatch(
-    {
-      response <- req_perform(req)
-      
-      # Check status code
-      status <- resp_status(response)
-      if (status != 200) {
-        warning(paste("API returned status:", status))
-        return(NULL)
-      }
-      
-      resp_body_json(response, simplifyVector = TRUE)
-    },
-    error = function(e) {
-      message(paste("Error making request:", conditionMessage(e)))
-      return(NULL)
-    }
-  )
-}
-
-# Usage
-response <- safe_api_request(
-  request("https://api.fasttrack29.com/v1/polls") |> 
-    req_url_query(limit = 10)
-)
-```
-
-### Rate Limiting
-
-Add delay between requests to be respectful:
-
-```r
-make_delayed_request <- function(req, delay = 0.5) {
-  Sys.sleep(delay)
-  req_perform(req)
-}
-
-# Batch request with delays
-fetch_multiple_pages <- function(n_pages = 5) {
-  all_data <- list()
+get_poll_data <- function(scope = "federal", days = 30) {
+  # Calculate date range
+  start <- Sys.Date() - days
   
-  for (i in 1:n_pages) {
-    response <- request("https://api.fasttrack29.com/v1/polls") |>
-      req_url_query(
-        limit = 100,
-        offset = (i - 1) * 100
-      ) |>
-      make_delayed_request(delay = 0.5)
-    
-    data <- resp_body_json(response, simplifyVector = TRUE)
-    all_data[[i]] <- data$items
-    
-    message(paste("Fetched page", i, "of", n_pages))
-  }
-  
-  bind_rows(all_data)
-}
-```
-
-### Get Party ID by Name
-
-```r
-get_party_id <- function(party_name) {
-  ref_data <- request("https://api.fasttrack29.com/v1/reference/all") |>
-    req_perform() |>
-    resp_body_json(simplifyVector = TRUE)
-  
-  parties <- as_tibble(ref_data$parties)
-  
-  # Search by short name or full name
-  match <- parties |>
-    filter(
-      short_name == party_name | 
-      name == party_name |
-      grepl(party_name, name, ignore.case = TRUE)
-    )
-  
-  if (nrow(match) == 0) {
-    stop(paste("Party not found:", party_name))
-  }
-  
-  return(match$id[1])
-}
-
-# Usage
-cdu_id <- get_party_id("CDU/CSU")
-spd_id <- get_party_id("SPD")
-```
-
-### Coalition Analysis
-
-Analyze if a coalition would have majority:
-
-```r
-analyze_coalition <- function(poll_id, coalition_parties) {
-  # Get specific poll
+  # Fetch data
   response <- request("https://api.fasttrack29.com/v1/polls") |>
-    req_url_path(paste0("/", poll_id)) |>
+    req_url_query(
+      scope = scope,
+      date_from = as.character(start),
+      limit = 100
+    ) |>
     req_perform()
   
-  poll_data <- resp_body_json(response, simplifyVector = TRUE)
+  polls <- resp_body_json(response)
   
-  # Extract results
-  results <- as_tibble(poll_data$results)
-  
-  # Calculate coalition total
-  coalition_sum <- results |>
-    filter(party_id %in% coalition_parties) |>
-    pull(percentage) |>
-    sum()
-  
-  # Check if majority (>50%)
-  majority <- coalition_sum > 50
-  
-  list(
-    poll_id = poll_id,
-    total = coalition_sum,
-    majority = majority,
-    parties = results |> filter(party_id %in% coalition_parties)
-  )
+  # Transform to tidy format
+  map_dfr(polls$items, function(poll) {
+    map_dfr(poll$results, function(result) {
+      tibble(
+        date = as.Date(poll$publish_date),
+        institute = poll$institute_name,
+        party = result$party_short_name,
+        percentage = result$percentage
+      )
+    })
+  })
 }
 
-# Example: CDU/CSU + SPD (Grand Coalition)
-analyze_coalition(8923, c(1, 2))  # CDU/CSU + SPD
+# Usage
+data <- get_poll_data("federal", 90)
 ```
 
-## Using simplifyVector
-
-The `simplifyVector = TRUE` parameter in `resp_body_json()` automatically converts JSON arrays to R vectors/matrices when possible, making data easier to work with:
-
-```r
-# Without simplifyVector (returns nested lists)
-data <- resp_body_json(response)
-
-# With simplifyVector (returns data frames where possible)
-data <- resp_body_json(response, simplifyVector = TRUE)
-```
+---
 
 ## Tips and Best Practices
 
-1. **Always check response status** before parsing
-2. **Use filters** to minimize data transfer
-3. **Cache reference data** - it rarely changes
-4. **Handle missing data** - some fields can be NULL
-5. **Respect rate limits** - add small delays between requests
-6. **Use appropriate data types** - convert dates, factors as needed
-7. **Use simplifyVector** for easier data manipulation
-8. **Implement error handling** for robust scripts
+### 1. Always Check Response Status
+
+```r
+response <- request(url) |> req_perform()
+
+if (resp_status(response) != 200) {
+  stop("Request failed")
+}
+
+data <- resp_body_json(response)
+```
+
+### 2. Use simplifyVector for Easier Data
+
+```r
+# Returns nested lists (default)
+data <- resp_body_json(response)
+
+# Returns data frames where possible
+data <- resp_body_json(response, simplifyVector = TRUE)
+```
+
+### 3. Filter Early to Save Bandwidth
+
+```r
+# Good: Filter at API level
+request(url) |>
+  req_url_query(scope = "federal", date_from = "2024-01-01")
+
+# Bad: Fetch everything then filter
+request(url) |> req_url_query(limit = 10000)
+# Then filter in R...
+```
+
+### 4. Cache Reference Data
+
+```r
+# Reference data rarely changes
+parties <- request("https://api.fasttrack29.com/v1/reference/parties") |>
+  req_perform() |>
+  resp_body_json()
+
+# Save for reuse
+saveRDS(parties, "parties_cache.rds")
+
+# Load later
+parties <- readRDS("parties_cache.rds")
+```
+
+### 5. Handle Missing Data
+
+```r
+# Some fields can be NULL
+polls_df <- map_dfr(polls$items, function(poll) {
+  tibble(
+    id = poll$id,
+    # Use %||% (null default operator) for missing values
+    respondents = poll$respondents %||% NA_integer_
+  )
+})
+```
+
+---
+
+## Quick Reference
+
+### Common API Patterns
+
+```r
+# GET request with query parameters
+request("https://api.fasttrack29.com/v1/polls") |>
+  req_url_query(scope = "federal", limit = 10) |>
+  req_perform() |>
+  resp_body_json()
+
+# Check status
+resp_status(response)  # 200 = OK, 404 = Not Found, etc.
+
+# Error handling
+tryCatch({
+  response <- request(url) |> req_perform()
+}, error = function(e) {
+  message("Failed: ", e$message)
+})
+```
+
+### Data Transformation Patterns
+
+```r
+# List of polls to data frame
+polls_df <- map_dfr(polls$items, ~tibble(
+  id = .x$id,
+  date = as.Date(.x$publish_date)
+))
+
+# Nested results to flat data frame
+results_df <- map_dfr(polls$items, function(poll) {
+  map_dfr(poll$results, ~tibble(
+    poll_id = poll$id,
+    party = .x$party_short_name,
+    pct = .x$percentage
+  ))
+})
+```
+
+### Visualization Patterns
+
+```r
+# Basic bar chart
+ggplot(data, aes(x = party, y = percentage)) +
+  geom_col() +
+  coord_flip()
+
+# Time series
+ggplot(data, aes(x = date, y = percentage, color = party)) +
+  geom_line()
+
+# Faceted
+ggplot(data, aes(x = date, y = percentage)) +
+  geom_point() +
+  facet_wrap(~party)
+```
+
+---
+
+## Next Steps
+
+- **[R Vignette](vignette.md)** — Complete workflow examples with detailed analysis
+- **[Use Cases](../use-cases/time-series.md)** — Advanced analysis scenarios
+- **[API Reference](../api-reference/overview.md)** — Endpoint documentation
+- **[Data & Pipeline](../data-pipeline/index.md)** — Understanding data sources
 
 ## Further Reading
 
 - [httr2 documentation](https://httr2.r-lib.org/)
-- [API Reference](../api-reference/overview.md)
-- [Use Cases](../use-cases/time-series.md)
-- [Data & Pipeline](../data-pipeline/index.md) - Understanding data sources
+- [ggplot2 documentation](https://ggplot2.tidyverse.org/)
+- [purrr documentation](https://purrr.tidyverse.org/)

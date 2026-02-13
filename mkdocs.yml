@@ -23,8 +23,9 @@ nav:
     - Elections: api-reference/elections.md
     - Downloads: api-reference/downloads.md
   - R Guide:
+    - Overview: r-guide/vignette.md
     - Working with R: r-guide/index.md
-    - Vignette - Practical Examples: r-guide/vignette.md
+    - Complete Workflow Examples: r-guide/complete-examples.md
   - Use Cases:
     - Time Series Analysis: use-cases/time-series.md
     - Comparing Pollsters: use-cases/comparing-pollsters.md
