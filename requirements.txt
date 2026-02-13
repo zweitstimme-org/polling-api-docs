@@ -1,0 +1,42 @@
+# Documentation Requirements
+
+## Python Packages
+
+```bash
+pip install mkdocs mkdocs-material pymdown-extensions
+```
+
+## Optional (for local development)
+
+```bash
+pip install mkdocs-minify-plugin
+```
+
+## R Packages (for vignette)
+
+```r
+install.packages(c(
+  "httr2",     # API requests
+  "dplyr",     # Data manipulation
+  "purrr",     # Functional programming
+  "ggplot2",   # Visualization
+  "lubridate", # Date handling
+  "tidyr",     # Data reshaping
+  "zoo",       # Time series
+  "knitr",     # R Markdown
+  "rmarkdown"  # R Markdown rendering
+))
+```
+
+## Building the Documentation
+
+```bash
+# Local development server
+mkdocs serve
+
+# Build static site
+mkdocs build
+
+# Deploy to GitHub Pages
+mkdocs gh-deploy
+```

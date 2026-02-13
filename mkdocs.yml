@@ -1,0 +1,89 @@
+site_name: Zweitstimme Polling API Documentation
+site_description: German election polling data API documentation for academics
+site_author: zweitstimme.org
+docs_dir: docs
+site_dir: site
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Introduction: getting-started/introduction.md
+    - Your First Request: getting-started/first-request.md
+    - Understanding the Data: getting-started/data-model.md
+  - Data & Pipeline:
+    - Overview: data-pipeline/index.md
+    - Data Pipeline: data-pipeline/pipeline.md
+    - Database Schema: data-pipeline/schema.md
+  - API Reference:
+    - Overview: api-reference/overview.md
+    - Polls: api-reference/polls.md
+    - Raw Polls: api-reference/raw-polls.md
+    - Results: api-reference/results.md
+    - Reference Tables: api-reference/reference-tables.md
+    - Elections: api-reference/elections.md
+    - Downloads: api-reference/downloads.md
+  - R Guide:
+    - Working with R: r-guide/index.md
+    - Vignette - Practical Examples: r-guide/vignette.md
+  - Use Cases:
+    - Time Series Analysis: use-cases/time-series.md
+    - Comparing Pollsters: use-cases/comparing-pollsters.md
+    - Party Trends: use-cases/party-trends.md
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.tabs.link
+    - content.code.annotation
+    - content.code.copy
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - admonition
+  - pymdownx.details
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - attr_list
+  - md_in_html
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/zweitstimme
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/zweitstimme
+  version:
+    provider: mike
+
+plugins:
+  - search
+  - minify:
+      minify_html: true
