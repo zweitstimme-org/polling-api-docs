@@ -11,46 +11,46 @@ The API provides polling data at different levels of processing:
 │                    API Structure                    │
 ├─────────────────────────────────────────────────────┤
 │                                                     │
-│  ┌──────────────┐      ┌──────────────┐           │
-│  │ Cleaned Data │      │   Raw Data   │           │
-│  │  /v1/polls   │      │ /v1/raw-polls│           │
-│  └──────┬───────┘      └──────┬───────┘           │
-│         │                     │                    │
-│         └──────────┬──────────┘                    │
-│                    │                               │
-│         ┌──────────▼──────────┐                    │
-│         │   Reference Tables  │                    │
-│         │ /v1/reference/*     │                    │
-│         └─────────────────────┘                    │
+│  ┌──────────────┐      ┌──────────────┐             │
+│  │ Cleaned Data │      │   Raw Data   │             │
+│  │  /v1/polls   │      │ /v1/raw-polls│             │
+│  └──────┬───────┘      └──────┬───────┘             │
+│         │                     │                     │
+│         └──────────┬──────────┘                     │
+│                    │                                │
+│         ┌──────────▼──────────┐                     │
+│         │   Reference Tables  │                     │
+│         │ /v1/reference/*     │                     │
+│         └─────────────────────┘                     │
 │                                                     │
 └─────────────────────────────────────────────────────┘
 ```
 
-## Cleaned vs Raw Data
+## Cleaned Vs Raw Data
 
 ### Cleaned Data (`/v1/polls`)
 
 **Purpose**: Ready-to-analyze polling data
 
 **Characteristics**:
+
 - Standardized party names (e.g., always "CDU/CSU", never "Union")
 - Consistent date formats (ISO 8601)
 - Normalized institute names
 - Resolved foreign keys (institute_id → institute_name)
 
-**When to use**: Statistical analysis, comparisons, time series
 
 ### Raw Data (`/v1/raw-polls`)
 
 **Purpose**: Original data as scraped from sources
 
 **Characteristics**:
+
 - Original text and formatting
 - Extra metadata not in cleaned data
 - Unprocessed dates (might be ranges like "12-18 Jan")
 - Original party abbreviations
 
-**When to use**: Verification, debugging, accessing original sources
 
 ## The Poll Object
 
@@ -67,6 +67,7 @@ Each poll contains:
 | `respondents` | Sample size | 2501 |
 | `institute_name` | Who conducted it | "Forsa" |
 | `scope` | Geographic level | "federal", "bayern" |
+| `methods`| Method used for the survey| "telefon"|
 
 ### Results
 
@@ -92,7 +93,7 @@ Party support percentages:
 Reference tables act as dictionaries:
 
 - **Institutes**: Who conducted the polls (Forsa → ID 1)
-- **Parties**: Political parties with names and colors
+- **Parties**: Political parties with names in short & long and their ID
 - **Methods**: Survey methodologies
 - **Elections**: Types of elections covered
 
@@ -121,38 +122,6 @@ Poll Table                 Reference Tables
 | `nrw` | North Rhine-Westphalia | State elections |
 | `eu` | European Union | EU Parliament polls |
 
-## Best Practices
-
-1. **Use cleaned data for analysis** — It's standardized and ready to use
-2. **Check reference tables first** — Understand what values are valid
-3. **Filter early** — Don't fetch everything, use query parameters
-4. **Handle missing data** — Some fields can be null
-5. **Respect rate limits** — Don't make too many requests too quickly
-
-## Example: Complete Workflow
-
-```r
-library(httr2)
-library(dplyr)
-
-# Step 1: Get reference data
-parties <- request("https://api.fasttrack29.com/v1/reference/parties") |>
-  req_perform() |>
-  resp_body_json()
-
-# Step 2: Query polls with filters
-polls <- request("https://api.fasttrack29.com/v1/polls") |>
-  req_url_query(
-    scope = "federal",
-    date_from = "2024-01-01",
-    limit = 100
-  ) |>
-  req_perform() |>
-  resp_body_json()
-
-# Step 3: Analyze
-# (see R vignette for detailed analysis examples)
-```
 
 ## For More Detail
 

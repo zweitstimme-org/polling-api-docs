@@ -2,14 +2,6 @@
 
 Download bulk data in various formats for offline analysis.
 
-## When to Use Downloads
-
-Use downloads when you:
-
-- Need all data at once (faster than multiple API calls)
-- Want to work offline
-- Prefer CSV, SQLite, or Parquet formats
-- Need data for Excel, SPSS, or other tools
 
 ## Available Downloads
 

@@ -55,7 +55,7 @@ polls <- request("https://api.fasttrack29.com/v1/polls") |>
       "survey_date_end": "2024-01-12",
       "respondents": 2501,
       "scope": "federal",
-      "source": "https://example.com/poll/12345",
+      "source": "wahlrecht.de",
       "institute_id": 1,
       "institute_name": "Forsa",
       "provider_id": 2,
@@ -102,7 +102,7 @@ polls <- request("https://api.fasttrack29.com/v1/polls") |>
 | `survey_date_end` | string \| null | Survey end date |
 | `respondents` | integer \| null | Number of respondents |
 | `scope` | string \| null | Geographic scope |
-| `source` | string \| null | Original source URL |
+| `source` | string \| null | Original source|
 | `institute_id` | integer \| null | Institute ID |
 | `institute_name` | string \| null | Institute name |
 | `provider_id` | integer \| null | Provider ID |
@@ -158,7 +158,7 @@ poll <- request("https://api.fasttrack29.com/v1/polls/12345") |>
   "survey_date_end": "2024-01-12",
   "respondents": 2501,
   "scope": "federal",
-  "source": "https://example.com/poll/12345",
+  "source": "wahlrecht.de",
   "institute_id": 1,
   "institute_name": "Forsa",
   "provider_id": 2,

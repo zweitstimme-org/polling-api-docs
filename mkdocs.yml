@@ -1,35 +1,36 @@
-site_name: Zweitstimme Polling API Documentation
-site_description: German election polling data API documentation for academics
+site_name: Zweitstimmeorg Polling API Documentation
+site_description: German election polling data API documentation
 site_author: zweitstimme.org
+site_url: https://zweitstimmeorg.github.io/polling-api-docs/
 docs_dir: docs
 site_dir: site
 
 nav:
   - Home: index.md
   - Getting Started:
-    - Introduction: getting-started/introduction.md
-    - Your First Request: getting-started/first-request.md
-    - Understanding the Data: getting-started/data-model.md
+      - Introduction: getting-started/introduction.md
+      - Your First Request: getting-started/first-request.md
+      - Understanding the Data: getting-started/data-model.md
   - Data & Pipeline:
-    - Overview: data-pipeline/index.md
-    - Data Pipeline: data-pipeline/pipeline.md
-    - Database Schema: data-pipeline/schema.md
+      - Overview: data-pipeline/index.md
+      # - Data Pipeline: data-pipeline/pipeline.md
+      - Database Schema: data-pipeline/schema.md
   - API Reference:
-    - Overview: api-reference/overview.md
-    - Polls: api-reference/polls.md
-    - Raw Polls: api-reference/raw-polls.md
-    - Results: api-reference/results.md
-    - Reference Tables: api-reference/reference-tables.md
-    - Elections: api-reference/elections.md
-    - Downloads: api-reference/downloads.md
-  - R Guide:
-    - Overview: r-guide/vignette.md
-    - Working with R: r-guide/index.md
-    - Complete Workflow Examples: r-guide/complete-examples.md
-  - Use Cases:
-    - Time Series Analysis: use-cases/time-series.md
-    - Comparing Pollsters: use-cases/comparing-pollsters.md
-    - Party Trends: use-cases/party-trends.md
+      - Overview: api-reference/overview.md
+      - Polls: api-reference/polls.md
+      - Raw Polls: api-reference/raw-polls.md
+      - Results: api-reference/results.md
+      - Reference Tables: api-reference/reference-tables.md
+      # - Elections: api-reference/elections.md
+      - Downloads: api-reference/downloads.md
+  # - R Guide:
+  #     - Overview: r-guide/vignette.md
+  #     - Working with R: r-guide/index.md
+  #     - Complete Workflow Examples: r-guide/complete-examples.md
+  # - Use Cases:
+  #   - Time Series Analysis: use-cases/time-series.md
+  #   - Comparing Pollsters: use-cases/comparing-pollsters.md
+  #   - Party Trends: use-cases/party-trends.md
 
 theme:
   name: material

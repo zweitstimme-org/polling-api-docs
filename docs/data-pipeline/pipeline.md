@@ -1,6 +1,6 @@
 # Data Pipeline
 
-This document explains how polling data flows through the Zweitstimme system, from raw sources to clean, queryable data via the API.
+This document explains how polling data flows through the polling-api system, from raw sources to clean, queryable data via the API.
 
 ## Overview
 
@@ -41,34 +41,33 @@ The system collects polling data from multiple German polling aggregators and AP
 **What it is**: The most comprehensive aggregator of German election polls
 
 **Coverage**:
+
 - Federal elections (Bundestagswahl)
 - State elections (Landtagswahlen) for all 16 states
 - European Parliament elections
 
 **Data points collected**:
+
 - Institute name (e.g., Forsa, INSA, Forschungsgruppe Wahlen)
 - Publication date
-- Survey period (Zeitraum)
+- Survey period 
 - Number of respondents
 - Method (phone, online, mixed)
-- Party percentages for all major parties (CDU/CSU, SPD, Grüne, FDP, AfD, Linke)
 
-**Update frequency**: Varies by source page, checked during each scraper run
 
 #### 2. DAWUM API
 
 **What it is**: Structured API providing polling data with consistent formatting
 
-**Coverage**: All major German polls with standardized fields
+**Coverage**: Most major German polls with standardized fields
 
 **Data points collected**:
+
 - Institute details
 - Survey dates
 - Party results
 - Method information
 - Parliament type
-
-**Update frequency**: Real-time via API calls
 
 #### 3. Manual Sources
 
@@ -86,27 +85,6 @@ Each scraper follows a consistent pattern:
 5. Check for duplicates
 6. Store in polls_raw table
 ```
-
-**Key features**:
-- **Rate limiting**: 1-second delay between requests to be respectful to sources
-- **Deduplication**: Checks existing data to avoid duplicates
-- **Snapshot storage**: Saves raw HTML for debugging and audit trail
-- **Error handling**: Continues processing other URLs if one fails
-
-### Running Scrapers
-
-```bash
-# Run all scrapers
-pollingapi scraper:run all
-
-# Run specific scraper
-pollingapi scraper:run wahlrecht
-pollingapi scraper:run bayern
-
-# Check scraper status
-pollingapi scraper:status
-```
-
 ---
 
 ## Stage 2: Data Processing (Cleaner/ETL)

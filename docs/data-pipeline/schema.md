@@ -1,7 +1,5 @@
 # Database Schema
 
-A comprehensive guide to understanding the database structure, designed for researchers, journalists, and analysts.
-
 ## The Big Picture
 
 Think of the database like a well-organized filing system. Instead of one giant pile of papers, we have **separate filing cabinets** (tables) for different types of information, with **index cards** (relationships) showing how they connect.
@@ -46,12 +44,11 @@ Before diving into the schema, it's important to understand that the database st
 **Purpose**: Ready-to-analyze polling data
 
 **Characteristics**:
+
 - Standardized party names (e.g., always "CDU/CSU", never "Union")
 - Consistent date formats (ISO 8601)
 - Normalized institute names
 - Resolved foreign keys (institute_id → institute_name)
-
-**When to use**: Statistical analysis, comparisons, time series
 
 **Stored in**: `polls` table and `poll_results` table
 
@@ -60,12 +57,11 @@ Before diving into the schema, it's important to understand that the database st
 **Purpose**: Original data as published by sources
 
 **Characteristics**:
+
 - Original text and formatting
 - Extra metadata not in cleaned data
-- Unprocessed dates (might be ranges like "12-18 Jan")
 - Original party abbreviations
 
-**When to use**: Verification, debugging, accessing original sources
 
 **Stored in**: `polls_raw` table
 
@@ -83,11 +79,7 @@ These tables are like dictionaries or lookup tables. They define the "vocabulary
 |-------|-------------|---------|
 | `id` | Unique number | 1, 2, 3... |
 | `name` | Institute name | "Forsa", "INSA", "Forschungsgruppe Wahlen" |
-| `description` | Additional info | "Berlin-based polling institute" |
 
-**Think of it as**: A phone book of polling companies
-
-**How it's used**: Instead of writing "Forsa" everywhere (and risking typos like "forsa", "Forsa GmbH", "FORSA"), we use the ID `1`.
 
 **API Access**: `GET /v1/reference/institutes`
 
@@ -99,20 +91,7 @@ These tables are like dictionaries or lookup tables. They define the "vocabulary
 |-------|-------------|---------|
 | `id` | Unique number | 1, 2, 4, 5... |
 | `name` | Full party name | "Christlich Demokratische Union Deutschlands" |
-| `short_name` | Abbreviation | "CDU/CSU", "SPD", "Grüne" |
-| `color` | Party color (hex) | "#000000" (for visualizations) |
 
-**Think of it as**: A roster of political parties
-
-**Key Parties**:
-- 1: CDU/CSU (Union)
-- 2: SPD
-- 3: FDP
-- 4: BÜNDNIS 90/DIE GRÜNEN (Grüne)
-- 5: DIE LINKE
-- 6: Alternative für Deutschland (AfD)
-- 7: Freie Wähler
-- ...and others
 
 **API Access**: `GET /v1/reference/parties`
 
@@ -128,14 +107,6 @@ These tables are like dictionaries or lookup tables. They define the "vocabulary
 | `scope` | Geographic scope | "federal", "bayern", "nrw" |
 | `date` | Election date | 2025-02-23 |
 
-**Think of it as**: A calendar of German elections
-
-**Common Elections**:
-- Bundestagswahl (Federal)
-- Bayern Landtagswahl
-- Nordrhein-Westfalen Landtagswahl
-- Europawahl (European Parliament)
-
 **API Access**: `GET /v1/reference/elections` and `GET /v1/elections`
 
 ### 4. Methods (How was it conducted?)
@@ -147,14 +118,6 @@ These tables are like dictionaries or lookup tables. They define the "vocabulary
 | `id` | Unique number | 1, 2, 4... |
 | `name` | Method name | "Online", "Telefon", "Telefon & Online" |
 | `description` | Details | "Online survey via panel" |
-
-**Think of it as**: A catalog of survey techniques
-
-**Methods**:
-- 1: Online
-- 2: Telefon (Phone)
-- 3: Face-to-face
-- 4: Telefon & Online (Mixed)
 
 **API Access**: `GET /v1/reference/methods`
 
@@ -168,8 +131,6 @@ These tables are like dictionaries or lookup tables. They define the "vocabulary
 | `name` | Source name | "Wahlrecht.de", "DAWUM" |
 | `description` | Details | "Polling aggregator website" |
 
-**Think of it as**: A list of where we collect data from
-
 **API Access**: `GET /v1/reference/providers`
 
 ---
@@ -180,7 +141,6 @@ These tables are like dictionaries or lookup tables. They define the "vocabulary
 
 **What it contains**: Each row represents one published poll/survey
 
-**Analogy**: Think of this as individual survey report cards
 
 | Field | Type | Description | Example |
 |-------|------|-------------|---------|
@@ -206,23 +166,10 @@ These tables are like dictionaries or lookup tables. They define the "vocabulary
 
 **API Access**: `GET /v1/polls` and `GET /v1/polls/{id}`
 
-**Example in Plain English**:
-```
-Poll #8923:
-- Published on: June 24, 2024
-- Surveyed: 1,005 people
-- Conducted by: Forsa (institute_id: 1)
-- Source: Wahlrecht.de (provider_id: 1)
-- About: Bundestagswahl (election_id: 1)
-- Method: Online survey (method_id: 1)
-- Scope: Federal (Germany-wide)
-```
-
 ### Poll Results (The Party Percentages)
 
 **What it contains**: Each row represents one party's result in one poll
 
-**Analogy**: This is like the score sheet - "In this poll, Party X got Y%"
 
 | Field | Type | Description | Example |
 |-------|------|-------------|---------|
@@ -235,13 +182,6 @@ Poll #8923:
 - `poll_id` → links to **Polls** table
 - `party_id` → links to **Parties** table
 
-**Example**:
-```
-Result #15420:
-- Belongs to poll: #8923
-- Party: CDU/CSU (party_id: 1)
-- Score: 32.0%
-```
 
 **API Access**: Results are included in poll responses (`include_results=true`) or via `GET /v1/polls/{id}/results`
 
@@ -311,97 +251,29 @@ Result #15420:
             └─────────────────┘
 ```
 
-### In Simple Terms
-
-1. **One Poll = One Row in `polls` table**
-   - Contains metadata about the survey
-
-2. **One Poll = Many Rows in `poll_results` table**
-   - Each party gets its own row with their percentage
-
-3. **Reference Tables = Lookup Information**
-   - Instead of saying "Forsa" everywhere, we say "institute_id: 1"
-   - The Institutes table tells us that ID 1 = Forsa
-
----
-
-## Query Examples
-
-### Example 1: Find all polls by Forsa
-
-**Plain English**: "Show me all surveys conducted by Forsa"
-
-**Logic**:
-1. Look up Forsa's ID in Institutes table → 1
-2. Find all rows in Polls where institute_id = 1
-
-**API Request**:
-```r
-request("https://api.fasttrack29.com/v1/polls") |>
-  req_url_query(institute_id = 1)
-```
-
-### Example 2: Get CDU/CSU results for latest polls
-
-**Plain English**: "Show me CDU/CSU percentages from the most recent surveys"
-
-**Logic**:
-1. Look up CDU/CSU's ID in Parties table → 1
-2. Find rows in Poll Results where party_id = 1
-3. Join with Polls table to get dates
-4. Sort by date (newest first)
-
-**API Request**:
-```r
-request("https://api.fasttrack29.com/v1/results") |>
-  req_url_query(party_id = 1, scope = "federal")
-```
-
-### Example 3: Calculate average support for SPD
-
-**Plain English**: "What's the average polling percentage for SPD?"
-
-**Logic**:
-1. Get SPD's ID from Parties table → 2
-2. Find all rows in Poll Results where party_id = 2
-3. Average the percentage column
-
-**In R**:
-```r
-results <- request("https://api.fasttrack29.com/v1/results") |>
-  req_url_query(party_id = 2, scope = "federal") |>
-  req_perform() |>
-  resp_body_json()
-
-# Extract and calculate average
-avg_support <- mean(sapply(results$items, function(x) x$results[[1]]$percentage))
-```
-
 ---
 
 ## Data Quality Notes
 
 ### What You Can Rely On
 
-✅ **Poll dates**: All dates are standardized to YYYY-MM-DD format
-✅ **Party percentages**: Stored as decimals (32.0 = 32%)
-✅ **Relationships**: Foreign keys are validated (no broken links)
-✅ **Deduplication**: Duplicate polls are prevented
+- ✅ **Poll dates**: All dates are standardized to YYYY-MM-DD format
+- ✅ **Party percentages**: Stored as decimals (32.0 = 32%)
+- ✅ **Relationships**: Foreign keys are validated (no broken links)
+- ✅ **Deduplication**: Duplicate polls are prevented
 
 ### What to Watch Out For
 
 ⚠️ **Missing data**: Some fields can be NULL (empty)
+
   - Not all sources provide respondent counts
   - Some polls lack method information
   - Survey dates are sometimes estimated
 
 ⚠️ **Scope variations**: 
+
   - "federal" = Germany-wide
   - State codes (e.g., "bayern", "nrw") = state-specific
-
-⚠️ **Method changes**: 
-  - Institutes sometimes change methodology over time
-  - Mixed methods becoming more common
 
 ---
 
@@ -418,32 +290,5 @@ avg_support <- mean(sapply(results$items, function(x) x$results[[1]]$percentage)
 | Original source data? | `polls_raw` | - | `/v1/raw-polls` |
 
 ---
-
-## Summary
-
-Think of the database as a well-organized research library:
-
-- **Reference tables** are like the catalog system - they define what exists
-- **Polls table** is like the book collection - each poll is a "book"
-- **Poll Results table** is like the index - showing what's inside each "book"
-- **Relationships** are like cross-references - connecting related information
-
-This structure makes it easy to ask complex questions like:
-- "How has SPD support changed over time?"
-- "Which institute shows the highest CDU/CSU numbers?"
-- "What methods do different pollsters use?"
-
-All without having to search through messy, inconsistent raw data!
-
----
-
-## For API Users
-
-When using the API:
-
-1. **Use reference tables** to get IDs (institutes, parties, etc.)
-2. **Query the polls endpoint** for metadata
-3. **Use results endpoint** for party-specific queries
-4. **Check raw polls** if you need to verify original data
 
 See the [API Reference](../api-reference/overview.md) for detailed endpoint documentation.

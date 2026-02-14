@@ -49,7 +49,6 @@ names(ref)
       "id": 1,
       "name": "Christlich Demokratische Union/Christlich-Soziale Union",
       "short_name": "CDU/CSU",
-      "color": "#000000"
     }
   ],
   "providers": [
@@ -113,17 +112,14 @@ print(inst_df)
   {
     "id": 1,
     "name": "Forsa",
-    "description": "Forsa Institute for Social Research and Statistical Analysis"
   },
   {
     "id": 2,
     "name": "INSA",
-    "description": "INSA Consult GmbH"
   },
   {
     "id": 3,
     "name": "Allensbach",
-    "description": "Institut für Demoskopie Allensbach"
   }
 ]
 ```
@@ -168,58 +164,35 @@ parties <- request("https://api.fasttrack29.com/v1/reference/parties") |>
     "id": 1,
     "name": "Christlich Demokratische Union/Christlich-Soziale Union",
     "short_name": "CDU/CSU",
-    "color": "#000000"
   },
   {
     "id": 2,
     "name": "Sozialdemokratische Partei Deutschlands",
     "short_name": "SPD",
-    "color": "#E3000F"
   },
   {
     "id": 3,
     "name": "Bündnis 90/Die Grünen",
     "short_name": "Grüne",
-    "color": "#1AA024"
   },
   {
     "id": 4,
     "name": "Freie Demokratische Partei",
     "short_name": "FDP",
-    "color": "#FFE300"
   },
   {
     "id": 5,
     "name": "Alternative für Deutschland",
     "short_name": "AfD",
-    "color": "#0489DB"
   },
   {
     "id": 6,
     "name": "Die Linke",
     "short_name": "Linke",
-    "color": "#BE3075"
   }
 ]
 ```
 
-### Using Party Colors
-
-```r
-library(dplyr)
-library(ggplot2)
-
-# Create color mapping
-party_colors <- parties |>
-  bind_rows() |>
-  select(short_name, color) |>
-  deframe()
-
-# Use in plot
-ggplot(data, aes(x = date, y = percentage, color = party)) +
-  geom_line() +
-  scale_color_manual(values = party_colors)
-```
 
 ## Providers
 
@@ -342,12 +315,10 @@ Get all taskers (media outlets that commission polls).
   {
     "id": 1,
     "name": "n-tv/die Welt",
-    "type": "media"
   },
   {
     "id": 2,
     "name": "Bild",
-    "type": "media"
   }
 ]
 ```
@@ -373,16 +344,9 @@ get_institute_name <- function(id) {
     pull(name)
 }
 
-get_party_color <- function(id) {
-  ref$parties |>
-    bind_rows() |>
-    filter(id == !!id) |>
-    pull(color)
-}
 
 # Use lookups
 get_institute_name(1)  # Returns: "Forsa"
-get_party_color(1)     # Returns: "#000000"
 ```
 
 ### Create ID Mappings
@@ -431,7 +395,7 @@ Quick reference for all reference tables:
 | Table | Fields | Use For |
 |-------|--------|---------|
 | **Institutes** | id, name, description | Filtering by pollster |
-| **Parties** | id, name, short_name, color | Party identification, visualization |
+| **Parties** | id, name, short_name, | Party identification, visualization |
 | **Providers** | id, name, description | Data source tracking |
 | **Methods** | id, name, description | Methodology analysis |
 | **Elections** | id, election_type, year, scope, date | Election-specific queries |
@@ -439,7 +403,7 @@ Quick reference for all reference tables:
 
 ## Caching Reference Data
 
-Since reference data changes infrequently, cache it locally:
+Since reference data could change in the future you should cache it locally:
 
 ```r
 # Save reference data

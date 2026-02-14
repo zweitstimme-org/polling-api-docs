@@ -72,12 +72,12 @@ first_poll$results
 # [1] 31.5
 ```
 
-### 2. Metadata (pagination info)
+### 2. Metadata (Pagination Info)
 
 ```r
 data$meta
 # $total
-# [1] 15432
+# [1] 9080
 # $limit
 # [1] 100
 # $offset
@@ -85,13 +85,14 @@ data$meta
 ```
 
 This tells you:
-- **total**: 15,432 polls total in the database
+
+- **total**: 9080 polls total in the database
 - **limit**: You got 100 polls (the default)
 - **offset**: Starting from the first poll (0)
 
 ## Adding Filters
 
-Real research usually requires filtering. Let's get only federal polls:
+Most of the time you probably don't want all the information available, because of that the API offers multiple ways to filter the data.
 
 ```r
 federal_polls <- request("https://api.fasttrack29.com/v1/polls") |>
@@ -102,8 +103,9 @@ federal_polls <- request("https://api.fasttrack29.com/v1/polls") |>
   req_perform() |>
   resp_body_json()
 
-# Check how many we got
+# The length can be looked up with
 length(federal_polls$items)
+# [1] 10
 ```
 
 ## Filtering by Date
@@ -126,7 +128,7 @@ recent_polls <- request("https://api.fasttrack29.com/v1/polls") |>
   resp_body_json()
 ```
 
-## Combining Multiple Filters
+## Combining multiple Filters
 
 You can combine filters to get very specific data:
 
@@ -142,9 +144,26 @@ specific_polls <- request("https://api.fasttrack29.com/v1/polls") |>
   resp_body_json()
 ```
 
+
+You can also extend this to only receive the polls from one intermediate:
+
+```r
+very_specific_polls <- request("https://api.fasttrack29.com/v1/polls") |>
+  req_url_query(
+    scope = "federal",
+    date_from = "2024-01-01",
+    date_to = "2024-12-31",
+    limit = 50
+    provider_id=2
+  ) |>
+  req_perform() |>
+  resp_body_json()
+```
+
+
 ## Working with Results
 
-Let's convert the results to a data frame for analysis:
+To convert the results easily to a data frame for analysis:
 
 ```r
 library(dplyr)
@@ -152,17 +171,15 @@ library(purrr)
 
 # Extract results from all polls
 all_results <- map_dfr(data$items, function(poll) {
-  if (!is.null(poll$results)) {
-    map_dfr(poll$results, function(result) {
-      tibble(
-        poll_id = poll$id,
-        publish_date = poll$publish_date,
-        institute = poll$institute_name,
-        party = result$party_short_name,
-        percentage = result$percentage
-      )
-    })
-  }
+  map_dfr(poll$results, function(result) {
+    tibble(
+      poll_id = poll$id,
+      publish_date = poll$publish_date,
+      institute = poll$institute_name,
+      party = result$party_short_name,
+      percentage = result$percentage
+    )
+  })
 })
 
 # View the results
@@ -223,11 +240,6 @@ req$url
 ```r
 response <- req_perform(req)
 resp_body_string(response)  # See raw JSON
-```
-
-3. **Check rate limits:**
-```r
-resp_headers(response)$`x-ratelimit-remaining`
 ```
 
 ## Next Steps
