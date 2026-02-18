@@ -85,7 +85,6 @@ Access data via:
 - **[Getting Started Guide](getting-started/introduction.md)** — The basics
 - **[Data & Pipeline](data-pipeline/index.md)** — Understanding data sources and structure
 - **[API Reference](api-reference/overview.md)** — Detailed endpoint documentation
-- **[R Vignette](r-guide/vignette.md)** — R examples
 
 ## About Zweitstimmeorg
 
