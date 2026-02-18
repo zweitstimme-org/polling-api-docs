@@ -1,7 +1,7 @@
 site_name: Zweitstimmeorg Polling API Documentation
 site_description: German election polling data API documentation
 site_author: zweitstimme.org
-site_url: https://zweitstimmeorg.github.io/polling-api-docs/
+site_url: https://api.fasttrack29.com/tutorial/
 docs_dir: docs
 site_dir: site
 
